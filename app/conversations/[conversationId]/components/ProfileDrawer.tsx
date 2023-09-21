@@ -8,6 +8,7 @@ import { Conversation, User } from "@prisma/client";
 import { format } from "date-fns";
 import {Fragment, useMemo, useState} from 'react';
 import {IoClose, IoTrash} from 'react-icons/io5';
+import ConfilmModal from "./ConfilmModal";
 
 interface ProfileDrawerProps{
     isOpen: boolean;
@@ -37,11 +38,7 @@ const ProfileDrawer:React.FC<ProfileDrawerProps> = ({isOpen, onClose, data}) => 
     }, [data]);
   return (
    <>
-   <Modal isOpen={isModalOpen} onClose={()=> setIsModalOpen(false)}>
-        <div className="bg-white p-5">
-            <p>Hello Modal</p>
-        </div>
-    </Modal>
+   <ConfilmModal isOpen={isModalOpen} onClose={()=> setIsModalOpen(false)} />
     <Transition.Root show={isOpen} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={onClose}>
              <Transition.Child 
