@@ -3,29 +3,88 @@ import useConversation from "@/app/hooks/useConversation";
 import { FullConversations } from "@/app/types";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {MdOutlineGroupAdd} from 'react-icons/md';
 import ConversationBox from "./ConversationBox";
+import GroupChatModal from "./GroupChatModal";
+import { User } from "@prisma/client";
+import { useSession } from "next-auth/react";
+import { pusherClient } from "@/libs/pusher";
+import { find } from "lodash";
 
 interface ConversationListProps{
     initialItems: FullConversations[];
+    users: User[];
 }
 
-const ConversationList:React.FC<ConversationListProps> = ({initialItems}) => {
+const ConversationList:React.FC<ConversationListProps> = ({initialItems, users}) => {
     const [items, setItems] = useState(initialItems);
+
+    const session = useSession();
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const router = useRouter();
 
     const {conversationId, isOpen} = useConversation();
 
+    const pusherKey = useMemo(()=>{
+        return session.data?.user?.email;
+    }, [session.data?.user?.email]);
+    
+    useEffect(()=>{
+        if(!pusherKey){
+            return;
+        }
+        pusherClient.subscribe(pusherKey);
+
+        const newHandle = (conversation: FullConversations) =>{
+            setItems((current)=>{
+                if(find(current, {id: conversation.id})){
+                    return current;
+                }
+                return [conversation, ...current];
+            })
+        };
+        const updateHandle = (conversation: FullConversations) =>{
+            setItems((current)=> current.map((currentConversation)=>{
+                if(currentConversation.id === conversation.id){
+                    return {
+                        ...currentConversation,
+                        messages: conversation.messages
+                    }
+                }
+                return currentConversation;
+            }))
+        }
+        const removeHandle = (conversation: FullConversations) =>{
+            setItems((current)=>{
+                return [...current.filter((convo)=> convo.id !== conversation.id)];
+            })
+            if(conversationId === conversation.id){
+                router.push('/conversations');
+            }
+        }
+        pusherClient.bind('conversation:new', newHandle);
+        pusherClient.bind('conversation:update', updateHandle);
+        pusherClient.bind('conversation:remove', removeHandle);
+        return () =>{
+            pusherClient.unsubscribe(pusherKey);
+            pusherClient.unbind('conversation:new', newHandle);
+            pusherClient.unbind('conversation:update', updateHandle);
+            pusherClient.unbind('conversation:remove', removeHandle);
+        }
+    }, [pusherKey, conversationId, router]);
   return (
-    <aside className={clsx(`fixed inset-y-0 pb-20 lg:left-20 lg:w-80 lg:block overflow-y-auto border-r border-gray-200`, isOpen ? 'hidden' : 'block w-full left-0')}>
+   <>
+   <GroupChatModal users={users} isOpen={isModalOpen} onClose={()=> setIsModalOpen(false)}/>
+     <aside className={clsx(`fixed inset-y-0 pb-20 lg:left-20 lg:w-80 lg:block overflow-y-auto border-r border-gray-200`, isOpen ? 'hidden' : 'block w-full left-0')}>
         <div className="px-5">
             <div className="flex justify-between mb-4 pt-4">
                 <div className="text-2xl font-bold text-neutral-800">
                     Messenger
                 </div>
-                <div className="rounded-full p-2 bg-gray-100 text-gray-600 cursor-pointer hover:opacity-75 transition">
+                <div onClick={()=> setIsModalOpen(true)} className="rounded-full p-2 bg-gray-100 text-gray-600 cursor-pointer hover:opacity-75 transition">
                     <MdOutlineGroupAdd size={20}/>
                 </div>
             </div>
@@ -34,6 +93,7 @@ const ConversationList:React.FC<ConversationListProps> = ({initialItems}) => {
             ))}
         </div>
     </aside>
+   </>
   )
 }
 

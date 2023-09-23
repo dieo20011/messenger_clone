@@ -10,6 +10,7 @@ import clsx from "clsx";
 import Avatar from "@/app/components/Avatar";
 import useOtherUser from "@/app/hooks/useOrtherUser";
 import { FullConversations } from "@/app/types";
+import AvatarGroup from "@/app/components/AvatarGroup";
 
 
 interface ConversationBoxProps {
@@ -83,8 +84,12 @@ const ConversationBox: React.FC<ConversationBoxProps> = ({
         selected ? 'bg-neutral-100' : 'bg-white'
       )}
     >
-    
-        <Avatar user={otherUser} />
+        {data.isGroup ? (
+          <AvatarGroup users={data.users}/>
+        ): (
+          <Avatar user={otherUser} />
+        )}
+        
     
       <div className="min-w-0 flex-1">
         <div className="focus:outline-none">

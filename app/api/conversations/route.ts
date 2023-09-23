@@ -1,6 +1,7 @@
 import getCurrentUser from "@/app/actions/getCurrentUser";
 import { NextResponse } from "next/server";
 import prisma from '@/libs/prismadb';
+import { pusherServer } from "@/libs/pusher";
 
 export async function POST(
     request: Request
@@ -17,7 +18,7 @@ export async function POST(
         if(!currentUser?.id || !currentUser?.email){
             return new NextResponse('Unauthorized', {status: 301});
         }
-        if(isGroup && [!members || members.length < 2 || !name]){
+        if(isGroup && (!members || members.length < 2 || !name)){
             return new NextResponse('Invalid data', {status: 400});
         }
         if(isGroup){
@@ -40,6 +41,12 @@ export async function POST(
                     users: true
                 }
             });
+
+            newConversation.users.forEach((user)=>{
+                if(user.email){
+                    pusherServer.trigger(user.email, 'conversation:new', newConversation);
+                }
+            })
             return NextResponse.json(newConversation);
         }
         const existingConversation = await prisma.conversation.findMany({
@@ -77,6 +84,11 @@ export async function POST(
             },
             include:{
                 users: true
+            }
+        })
+        newConversation.users.map((user)=>{
+            if(user.email){
+                pusherServer.trigger(user.email, 'conversation:new', newConversation);
             }
         })
         return NextResponse.json(newConversation);
