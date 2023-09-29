@@ -1,1 +1,18 @@
-{ "rewrites": [{ "source": "/(.*)", "destination": "/" }] }
+{
+    "builds": [
+      {
+        "src": "messenger-clone",
+        "use": "@vercel/node",
+        "config": {
+          "maxLambdaSize": "5mb",
+          "buildCommand": "prisma generate && your-other-build-commands"
+        }
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/(.*)",
+        "destination": "/"
+      }
+    ]
+  }
